@@ -44,3 +44,31 @@ Switch>enable
 Switch#show startup-config
 Switch#show running-config
 ```
+
+## Lab 2: MAC address learning
+
+Purpose: In the following lab we will be seeing how the MAC address table of each switch gets updated.
+
+### Step 1: Configure switches
+
+We will clear the existing configuration of the switches and set a simple hostname for each one. We will also clear the existing mac address table in case there are dynamic entries in it.
+
+For `Switch1`:
+
+```
+Switch>enable
+Switch#erase startup-config
+Switch#configure terminal
+Switch(config)#hostname sw1
+sw1(config)#do copy running-config startup-config
+sw1(config)#exit
+sw1#reload
+sw1>enable
+sw1#clear mac address-table dynamic
+```
+
+For `Switch2`, repeat the identical commands with the only change of changing the hostname `sw1` to `sw2`.
+
+The following GNS3 network topology shows what we have configured so far:
+
+![Starting configuration for lab2 with configuration only been done to the switches](./pictures/lab2_intro.jpg)
