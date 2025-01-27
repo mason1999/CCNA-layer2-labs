@@ -160,7 +160,11 @@ Total Mac Addresses for this criterion: 2
 
 **Purpose**: In the following lab we will be seeing how the MAC address table of each switch gets updated and how the ARP table for the endhosts get updated.
 
-### Step 1: Configure switches
+The following diagram outlines the initial topology we have set up:
+
+![Starting configuration for lab3 with no configuration done to anything yet.](./pictures/lab3_intro.jpg)
+
+### Step 1: Configure hostnames for the switches
 
 We will clear the existing configuration of the switches and set a simple hostname for each one. We will also clear the existing mac address table in case there are dynamic entries in it.
 
