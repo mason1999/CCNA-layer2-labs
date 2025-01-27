@@ -4,7 +4,7 @@
 
 This is a repository where I display the layer 2 labs I've implemented with GNS3 using cisco images. The focus of these labs is to document the process in achieving different outcomes (for example, a simple outcome could just be to set a password on a Cisco switch). The commands are also demonstrated in each lab exercise as is the network topology on GNS3 (when necessary).
 
-## Lab 1: Manage hostname and secret to get into enable/privileged EXEC mode
+## Lab 1: Manage hostname and secret to get into enable/privileged EXEC mode and enable helpful features to avoid lab frustrations
 
 The GNS3 network topology is shown below:
 
@@ -44,6 +44,27 @@ Switch>enable
 Switch#show startup-config
 Switch#show running-config
 ```
+
+Finally: Here are some helpful configurations to remember to help avoid frustrations
+
+```
+Switch#configure terminal
+Switch(config)#no ip domain-lookup
+Switch(config)#line console 0
+Switch(config-line)#exec-timeout 0 0
+Switch(config-line)#logging synchronous
+Switch(config-line)#history size 20
+Switch(config-line)#exit
+Switch(config)#exit
+Switch#
+```
+
+An explantion of each command is as follows:
+
+- `no ip domain-lookup`: console will block by doing a dns lookup for mis-typed commands. disable this
+- `exec-timeout 0 0`: set inactivity timer to never
+- `logging synchronous`: only allow annoying output messages to come after show commands and not when you're in the middle of typing a command
+- `history size 20`: history is limited to 20 commands
 
 ## Lab 2: MAC address learning - Connecting between two switches
 
@@ -164,29 +185,56 @@ The following diagram outlines the initial topology we have set up:
 
 ![Starting configuration for lab3 with no configuration done to anything yet.](./pictures/lab3_intro.jpg)
 
-### Step 1: Configure hostnames for the switches
+### Step 1: Configure hostnames for the switches and show initial MAC address tables
 
 We will clear the existing configuration of the switches and set a simple hostname for each one. We will also clear the existing mac address table in case there are dynamic entries in it.
 
-For `Switch1`:
+For `Switch 1` (`Switch 2` configuration is identical and is made in a comment):
 
 ```
 Switch>enable
 Switch#erase startup-config
 Switch#configure terminal
-Switch(config)#hostname sw1
+Switch(config)#hostname sw1 ! hostname sw2 for switch 2
 sw1(config)#do copy running-config startup-config
 sw1(config)#exit
 sw1#reload
 sw1>enable
 sw1#clear mac address-table dynamic
+sw1#show mac address-table dynamic
 ```
 
-For `Switch2`, repeat the identical commands with the only change of changing the hostname `sw1` to `sw2`.
+The MAC address table for `sw1` is:
+
+```
+sw1#show mac address-table dynamic
+          Mac Address Table
+-------------------------------------------
+
+Vlan    Mac Address       Type        Ports
+----    -----------       --------    -----
+   1    0c19.772d.0000    DYNAMIC     Gi0/2
+Total Mac Addresses for this criterion: 1
+
+! Inserted comment: The MAC address 0c19.772d.0000 belongs to sw2.
+```
+
+The MAC address table for `sw2` is:
+
+```
+sw2#show mac address-table dynamic
+          Mac Address Table
+-------------------------------------------
+
+Vlan    Mac Address       Type        Ports
+----    -----------       --------    -----
+   1    0c4c.b477.0002    DYNAMIC     Gi0/0
+Total Mac Addresses for this criterion: 1
+
+! Inserted comment: The MAC address 0c4c.b477.0002 belongs to sw1.
+```
 
 The following GNS3 network topology shows what we have configured so far:
-
-![Starting configuration for lab2 with configuration only been done to the switches](./pictures/lab3_intro.jpg)
 
 ### Step 2: Configure IP address ranges for the end hosts
 
@@ -214,5 +262,3 @@ ip address add "${ip_address}" dev "${device_interface_name}"
 ```
 
 Change the **ip_address** and **device_interface_name** appropriately depending on what the ip address and device interface name should be for `ubuntu-docker-2`, `ubuntu-desktop-3` and `ubuntu-desktop-4`. The ubuntu desktops will need `sudo` privileges and the password is `osboxes.org`.
-
-![Configure ip addresses for the end ubuntu hosts](./pictures/lab3_configuring-ip-addresses.jpg)
