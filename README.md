@@ -8,7 +8,7 @@ This is a repository where I display the layer 2 labs I've implemented with GNS3
 
 The GNS3 network topology is shown below:
 
-![hello](./pictures/lab1_switch-not-attached.jpg)
+![A switch which is powered on but not attached to anything](./pictures/lab1_switch-not-attached.jpg)
 
 To create a hostname and secret to get into enable mode, we must define the hostname, the secret and save that configuration to the startup-config file:
 
@@ -175,7 +175,7 @@ Total Mac Addresses for this criterion: 2
 
 **Explanation**: When we sent a ping request to the ip address of `sw2` (10.0.0.2) from `sw1`, an `ARP` request was made to `sw2` from `sw1`. Hence there is 1 missing request which didn't go through. Afterwards, as the ping request (probably request 2 out of 5) goes from `sw1` to `sw2`, `sw2` is able to learn the new virtual MAC address `0c04.471d.8001` for `sw1` on vlan 1. Next as the ping reply goes back to `sw1`, the source and destination MAC addresses are now changed and hence, `sw1` is able to learn the new MAC address `0c7a.4405.8001` for `sw2` on vlan1. Hence with ARP, the IP address is transformed into a MAC address and the ping requests (specifically the source MAC address) allow for the updating of the MAC address tables in each switch.
 
-## Lab 3: MAC address learning - End hosts
+## Lab 3: MAC address learning and ARP table - End hosts
 
 > **Note: (⚠️)** We will be using `ARP` again to resolve layer 3 ip addresses to layer 2 MAC addresses. This will be a common theme in a lot of the labs.
 
@@ -234,8 +234,6 @@ Total Mac Addresses for this criterion: 1
 ! Inserted comment: The MAC address 0c4c.b477.0002 belongs to sw1.
 ```
 
-The following GNS3 network topology shows what we have configured so far:
-
 ### Step 2: Configure IP address ranges for the end hosts
 
 We will configure the following ip addresses:
@@ -251,14 +249,189 @@ To do that, you can firstly obtain the interface names throught the following co
 ip address show | grep -E '^[0-9]*:' | awk '{print $2}' | sed 's/://g'
 ```
 
-and ignore the loopback interface `lo`. The other interface name (there should only be `lo` and `eth0` or `ens3`) should be the name of the interface.
+and ignore the loopback interface `lo`. Generally what I've found is that the interface is called `eth0` for the docker containers and `ens3` for the ubuntu emulated desktops.
 
-We then use this name to configure the ip address for the end hosts. For example, with `ubuntu-docker-1`, to configure the ip address enter in the commands:
+We then use this name to configure the ip address for the end hosts. For example, with `ubuntu-docker-1`, to configure the ip address enter the command:
 
 ```bash
-ip_address="10.0.0.10/24"
-device_interface_name="eth0"
-ip address add "${ip_address}" dev "${device_interface_name}"
+ip address add "10.0.0.10/24" dev "eth0"
 ```
 
-Change the **ip_address** and **device_interface_name** appropriately depending on what the ip address and device interface name should be for `ubuntu-docker-2`, `ubuntu-desktop-3` and `ubuntu-desktop-4`. The ubuntu desktops will need `sudo` privileges and the password is `osboxes.org`.
+For the emulated ubuntu desktops (for example `ubuntu-desktop-3`), to configure the ip address enter the command:
+
+```bash
+sudo ip address add "10.0.0.30/24" dev "ens3"
+```
+
+where the password is `osboxes.org` to gain access to root privileges.
+
+### Step 3: ARP table and MAC address table for communication between end host 1 and end host 3
+
+To begin, ensure that you enter the command `clear mac address-table dynamic` into both `sw1` and `sw2` as if you've left them for some time they may have (usually very helpfully, but not in this case) populated their MAC address tables with the MAC addresses of the end hosts on their LAN.
+
+We now send a message from `ubuntu-docker-1` to `ubuntu-desktop-3` with `ping 10.0.0.30`. What this will do is the following:
+
+1. Update the MAC address table of `sw1` with the MAC address of `ubuntu-docker-1` due to the ARP request sent from host 1. This is a broadcast message.
+1. Update the MAC address table of `sw2` with the MAC address of `ubuntu-docker-1` due to the ARP request sent from host 1. This is a broadcast message.
+1. Update the MAC address table of `sw2` with the MAC address of `ubuntu-desktop-3` due to the ARP reply sent from host 3. This is a unicast message.
+1. Update the MAC address table of `sw1` with the MAC address of `ubuntu-desktop-3` due to the ARP reply sent from host 3. This is a unicast message.
+1. Update the ARP table of `ubuntu-docker-1` with the MAC address of `ubuntu-desktop-3` when it receives back an ARP reply.
+1. Next `ubuntu-docker-1` will be able to form the ping request to `ubuntu-desktop-3` and send it.
+1. When `ubuntu-desktop-3` has to reply, it will have to go through steps (1) --> (6) as if it were doing `ping 10.0.0.10` as it now needs to know the MAC address of `ubuntu-docker-1`.
+
+The diagram below illustrates the process and results on the two end hosts:
+
+![host 1 to host 3 arp tables after pinging request and reply has finished.](./pictures/lab3_host1-to-host3.jpg)
+
+The MAC address tables for the two switches are shown below:
+
+For `sw1`:
+
+```
+sw1#show mac address-table dynamic
+          Mac Address Table
+-------------------------------------------
+
+Vlan    Mac Address       Type        Ports
+----    -----------       --------    -----
+   1    0242.6798.fa00    DYNAMIC     Gi0/0
+   1    0c19.772d.0000    DYNAMIC     Gi0/2
+   1    0c86.1ed6.0000    DYNAMIC     Gi0/2
+Total Mac Addresses for this criterion: 3
+
+```
+
+For `sw2`:
+
+```
+sw2#show mac address-table dynamic
+          Mac Address Table
+-------------------------------------------
+
+Vlan    Mac Address       Type        Ports
+----    -----------       --------    -----
+   1    0242.6798.fa00    DYNAMIC     Gi0/0
+   1    0c4c.b477.0002    DYNAMIC     Gi0/0
+   1    0c86.1ed6.0000    DYNAMIC     Gi0/1
+Total Mac Addresses for this criterion: 3
+```
+
+Note how the MAC addresses for host 1 (`0242.6798.fa00`) and host 3 (`0c86.1ed6.0000`) show up in the MAC address table.
+
+### Step 4: ARP table and MAC address table for communication between end host 2 and end host 4
+
+Similarly if we enter the command `ping 10.0.0.40` from `ubuntu-docker-2` to reach `ubuntu-desktop-4` we get the following results:
+
+For `sw1` the MAC address table is:
+
+```
+sw1#show mac address-table
+          Mac Address Table
+-------------------------------------------
+
+Vlan    Mac Address       Type        Ports
+----    -----------       --------    -----
+   1    0242.6798.fa00    DYNAMIC     Gi0/0
+   1    0242.8b44.ea00    DYNAMIC     Gi0/1
+   1    0c19.772d.0000    DYNAMIC     Gi0/2
+   1    0c3c.5436.0000    DYNAMIC     Gi0/2
+   1    0c86.1ed6.0000    DYNAMIC     Gi0/2
+Total Mac Addresses for this criterion: 5
+```
+
+For `sw2` the MAC address table is:
+
+```
+sw2#show mac address-table
+          Mac Address Table
+-------------------------------------------
+
+Vlan    Mac Address       Type        Ports
+----    -----------       --------    -----
+   1    0242.6798.fa00    DYNAMIC     Gi0/0
+   1    0242.8b44.ea00    DYNAMIC     Gi0/0
+   1    0c3c.5436.0000    DYNAMIC     Gi0/2
+   1    0c4c.b477.0002    DYNAMIC     Gi0/0
+   1    0c86.1ed6.0000    DYNAMIC     Gi0/1
+Total Mac Addresses for this criterion: 5
+
+```
+
+- For `ubuntu-docker-2`:
+  - `ip neighbour` shows us `10.0.0.40 dev eth0 lladdr 0c:3c:54:36:00:00 REACHABLE`
+  - `ip address show dev eth0` shows us the MAC address is `02:42:8b:44:ea:00`
+- For `ubuntu-desktop-4`:
+  - `ip neighbour` shows us `10.0.0.20 dev ens3 lladdr 02:42:8b:44:ea:00 REACHABLE`
+  - `ip address show dev eth0` shows us the MAC address is `0c:3c:54:36:00:00`
+
+### Step 5: Update the ARP table for host 1 then delete it
+
+From `ubunut-docker-1`:
+
+1. type in `ping 10.0.0.20` and `ping 10.0.0.40`.
+1. Next check the arp table with `ip neighbour`
+   ```
+   root@ubuntu-docker-1:~# ip neighbour
+   10.0.0.20 dev eth0 lladdr 02:42:8b:44:ea:00 DELAY
+   10.0.0.30 dev eth0 lladdr 0c:86:1e:d6:00:00 REACHABLE
+   10.0.0.40 dev eth0 lladdr 0c:3c:54:36:00:00 STALE
+   ```
+1. Delete the ARP table for the subnet `10.0.0.0/24`
+   ```
+   root@ubuntu-docker-1:~# ip neighbour flush to 10.0.0.0/24
+   root@ubuntu-docker-1:~# ip neighbour
+   root@ubuntu-docker-1:~# # See there is no output in the table.
+   ```
+
+## Lab 4: Configure simple passwords and local username/secrets for accessing the console
+
+**Purpose**: To show how to configure:
+
+1. A simple password to enable console access
+1. A local username and secret to enable console access
+
+### Configure simple password to enable console access
+
+```
+Switch#configure terminal
+Switch(config)#line console 0
+Switch(config-line)#password faith
+Switch(config-line)#login
+Switch(config-line)#exit
+Switch(config)#exit
+Switch#exit
+```
+
+Upon exiting and entering the console again, you will have to enter the password `faith`.
+
+To disable the need for a password, enter in the following commands:
+
+```
+Switch#configure terminal
+Switch(config)#line console 0
+Switch(config-line)#no login
+Switch(config-line)#exit
+Switch(config)#exit
+Switch#exit
+```
+
+### Configure a local username / secret to access console
+
+To configure a local username / secret to access the console (e.g **username**: `mason` and **secret**: `dogs` and **username**: `mathew` and **secret**: `cats`)
+
+```
+Switch>enable
+Switch#configure terminal
+Switch(config)#username mason secret dogs
+Switch(config)#username mathew secret cats
+Switch(config)#line console 0
+Switch(config-line)#no password ! OPTIONAL
+Switch(config-line)#login local
+Switch(config-line)#exit
+Switch(config)#exit
+Switch#exit
+```
+
+Like before, to disable the need for any username / secret combination use the `Switch(config-line)#no login` command.
+
+## Lab 5: Configure access to the switch with telnet
