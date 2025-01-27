@@ -8,7 +8,7 @@ This is a repository where I display the layer 2 labs I've implemented with GNS3
 
 The GNS3 network topology is shown below:
 
-![hello](./pictures/switch-not-attached.jpg)
+![hello](./pictures/lab1_switch-not-attached.jpg)
 
 To create a hostname and secret to get into enable mode, we must define the hostname, the secret and save that configuration to the startup-config file:
 
@@ -49,7 +49,9 @@ Switch#show running-config
 
 **Purpose**: In the following lab we will be seeing how to configure switches to communicate with one another and learn each other's MAC addresses.
 
-**Note**: vlans are mentioned here in the commands but they will be explored more in depth in future labs. It just suffices to know that by default the switch and all things attached to it are part of vlan 1.
+> **Note: (⚠️)** vlans are mentioned here in the commands but they will be explored more in depth in future labs. It just suffices to know that by default the switch and all things attached to it are part of vlan 1..
+
+> **Note: (⚠️)** Though we are focusing on **layer 2** specifically, we will be using **layer 3** addressing (with ip addresses) to be able to communicate between the endpoints. The crucial detail here is that `ARP` will be the layer 2 protocol which will resolve these ip addresses to the MAC addresses (thus serving the crucial bridge between the layer 2 and not yet talked about layer 3 concepts). To find out more refer to this helpful video by Jeremy's IT lab [here](https://www.youtube.com/watch?v=5q1pqdmdPjo&list=PLxbwE86jKRgMpuZuLBivzlM8s2Dk5lXBQ&index=11).
 
 We can see that by default, that when you connect 2 switches the MAC address table of the switches contain the MAC address of each other. Take the following GNS3 network topology as an example:
 
@@ -110,7 +112,6 @@ sw2(config-if)#ip address 10.0.0.2 255.255.255.0
 sw2(config-if)#no shutdown
 sw2(config-if)#exit
 sw2(config)#exit
-sw2(config)#exit
 sw2#clear mac address-table dynamic
 ```
 
@@ -155,7 +156,9 @@ Total Mac Addresses for this criterion: 2
 
 ## Lab 3: MAC address learning - End hosts
 
-**Purpose**: In the following lab we will be seeing how the MAC address table of each switch gets updated.
+> **Note: (⚠️)** We will be using `ARP` again to resolve layer 3 ip addresses to layer 2 MAC addresses. This will be a common theme in a lot of the labs.
+
+**Purpose**: In the following lab we will be seeing how the MAC address table of each switch gets updated and how the ARP table for the endhosts get updated.
 
 ### Step 1: Configure switches
 
@@ -182,8 +185,6 @@ The following GNS3 network topology shows what we have configured so far:
 ![Starting configuration for lab2 with configuration only been done to the switches](./pictures/lab3_intro.jpg)
 
 ### Step 2: Configure IP address ranges for the end hosts
-
-> **Note: (⚠️)** Though we are focusing on **layer 2** specifically, we will be using **layer 3** addressing (with ip addresses) to be able to communicate between the endpoints. The crucial detail here is that `ARP` will be the layer 2 protocol which will resolve these ip addresses to the MAC addresses (thus serving the crucial bridge between the layer 2 and not yet talked about layer 3 concepts). To find out more refer to this helpful video by Jeremy's IT lab [here](https://www.youtube.com/watch?v=5q1pqdmdPjo&list=PLxbwE86jKRgMpuZuLBivzlM8s2Dk5lXBQ&index=11).
 
 We will configure the following ip addresses:
 
