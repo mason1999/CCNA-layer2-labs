@@ -435,3 +435,176 @@ Switch#exit
 Like before, to disable the need for any username / secret combination use the `Switch(config-line)#no login` command.
 
 ## Lab 5: Configure access to the switch with telnet
+
+### Step 1: Configure an IP Address for the switch
+
+```
+Switch>enable
+Switch#configure terminal
+Switch(config)#interface vlan 1
+Switch(config-if)#ip address 10.0.0.1 255.255.255.0
+Switch(config-if)#no shutdown
+Switch(config-if)#exit
+Switch(config)#exit
+```
+
+### Step 2: Configure an IP Address for the host
+
+```
+root@Docker:~# ip address add 10.0.0.2/24 dev eth0
+```
+
+### Step 3: Configure a password to get into Privileged EXEC / Enable mode
+
+```
+Switch>enable secret faith
+```
+
+### Step 4: Enable a local username and secret to log into the vty line
+
+```
+Switch(config)#username mason secret wong
+Switch(config)#line vty 0 15
+Switch(config-line)#login local
+Switch(config-line)#no password
+Switch(config-line)#exit
+Switch(config)#exit
+```
+
+### Step 5: Enable telnet on the virtual terminal line
+
+```
+Switch(config)#line vty 0 15
+Switch(config-line)#transport input telnet
+Switch(config)#exit
+```
+
+### Step 6: Log into the switch with telnet
+
+```
+root@Docker:~#telnet 10.0.0.1
+Username:mason
+Password:wong # normally masked
+Switch>enable
+Password:faith # normally masked
+```
+
+Of course you can also swap out step 4 which uses a local username and secret to just a global password for the switch.
+
+## Lab 6: Configure access to the switch with ssh
+
+Accessing the switch with SSH is very similar to telnet except of two main steps
+
+### Step 1: Configure an IP Address for the switch
+
+```
+Switch>enable
+Switch#configure terminal
+Switch(config)#interface vlan 1
+Switch(config-if)#ip address 10.0.0.1 255.255.255.0
+Switch(config-if)#no shutdown
+Switch(config-if)#exit
+Switch(config)#exit
+```
+
+### Step 2: Configure an IP Address for the host
+
+```
+root@Docker:~# ip address add 10.0.0.2/24 dev eth0
+```
+
+### Step 3: Configure a password to get into Privileged EXEC / Enable mode
+
+```
+Switch>enable secret faith
+```
+
+### Step 4: Enable a local username and secret to log into the vty line
+
+```
+Switch(config)#username mason secret wong
+Switch(config)#line vty 0 15
+Switch(config-line)#login local
+Switch(config-line)#no password
+Switch(config-line)#exit
+Switch(config)#exit
+```
+
+### Step 5: Enable ssh on the virtual terminal line
+
+```
+Switch(config)#line vty 0 15
+Switch(config-line)#transport input ssh
+Switch(config)#exit
+```
+
+### Step 6: Create the FQDN, generate keys for ssh on switch and use ssh version 2
+
+```
+Switch(config)#hostname sw1
+sw1(config)#ip domain-name example.com
+sw1(config)#crypto key generate rsa
+How many bits in the modulus [512]: 1024
+sw1(config)#ip ssh version 2
+```
+
+### Step 7: Find the host key algorithm being used on the switch
+
+```
+sw1#show ip ssh
+```
+
+Look for the line which says `Hostkey Algorithms`. In the lab environment I had two algorithms:
+
+- `x509v3-ssh-rsa`
+- `ssh-rsa`
+
+### Step 8: Ensure connection with ssh uses the correct algorithms
+
+The following command:
+
+```
+root@ubuntu1:~# ssh -o HostKeyAlgorithms=+ssh-rsa  mason@10.0.0.1
+```
+
+will most likely error with output similar to this:
+
+> Unable to negotiate with 10.0.0.1 port 22: no matching key exchange method found. Their offer: diffie-hellman-group-exchange-sha1,diffie-hellman-group14-sha1,diffie-hellman-group1-sha1
+
+Use one of the algorithms in the list in the error in the following command with the `KexAlgorithms` parameter. For example:
+
+```
+root@ubuntu1:~# ssh \
+   -o HostKeyAlgorithms=+ssh-rsa \
+   -o KexAlgorithms=+diffie-hellman-group14-sha1 \
+   mason@10.0.0.1
+```
+
+- The **HostKeyAlgorithm** is the algorithm for the _host key_.
+- The **KexAlgorithms** is the algorith for the _key exchange_.
+
+And then finally check the connection with the `show ssh` command:
+
+```
+show ssh
+```
+
+which outputted for me something like the following:
+
+```
+sw1>show ssh
+Connection Version Mode Encryption  Hmac         State                 Username
+0          2.0     IN   aes128-ctr  hmac-sha1    Session started       mason
+0          2.0     OUT  aes128-ctr  hmac-sha1    Session started       mason
+
+```
+
+### Miscellaneous commands
+
+Things to ask yourself:
+
+- How do I configure the switch to receive it's ip address via **DHCP** (that is, how do I make it a DHCP client?)
+- How do I verify DHCP information on a switch? (`show dhcp lease`)
+- How do I configure a **default gateway** for the switch?
+- How do I configure **DNS** for the switch?
+- What does the `show interfaces vlan 1` do?
