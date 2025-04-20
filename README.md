@@ -608,3 +608,75 @@ Things to ask yourself:
 - How do I configure a **default gateway** for the switch?
 - How do I configure **DNS** for the switch?
 - What does the `show interfaces vlan 1` do?
+
+## Lab 7: Enable speed, duplex and description for physical interface(s) and see results with `show interfaces status`
+In the following example we use the `Cisco 3725` router with a configured switching module to grant it switching capabilities. The following diagram demonstrates this process by adding the `NM-16ESW` module to the router so that it obtains layer 2 switching features:
+
+![configure router right click](./pictures/lab7_cofigure-router-right-click.jpg)
+
+![configure router switch module](./pictures/lab7_configure-router-switch-module.jpg)
+
+
+### Configure speed, duplex and description for one interface (fa1/0)
+Configure **duplex**, **speed**, **description** and enable the interface with **no shutdown**
+```
+R1#configure terminal
+R1(config)#interface FastEthernet 1/0
+R1(config-if)#duplex full
+R1(config-if)#speed 100
+R1(config-if)#description Testing description for fa1/0
+R1(config-if)#no shutdown
+R1(config-if)#exit
+R1(config)#exit
+```
+output the interface status with `show interfaces status`:
+```
+R1#show interfaces status
+```
+Which displays the following output:
+
+![show interface status 1](./pictures/lab7_show-interface-status-1.jpg)
+
+### Configure speed, duplex and description for multiple interfaces
+do the same thing for interfaces `Fa1/1-Fa1/15` with the `interface range fastEthernet 1/1 - 15` command:
+```
+R1#configure terminal
+R1(config)#interface range fastEthernet 1/1 - 15
+R1(config-if-range)#speed 100
+R1(config-if-range)#duplex full
+R1(config-if-range)#description for a group of interfaces
+R1(config-if-range)#no shutdown
+R1(config-if-range)#exit
+R1(config)#exit
+R1#show interfaces status
+```
+
+![show interface status multiple interfaces](./pictures/lab7_show-interface-status-multiple-interfaces.jpg)
+
+### Remove and default speed, duplex and description for one interface (fa1/1)
+To default **speed**, **duplex** and **description** for `Fa1/1` we simply use the `no` command:
+```
+R1#configure terminal
+R1(config)#interface fastEthernet 1/1
+R1(config-if)#no speed
+R1(config-if)#no duplex
+R1(config-if)#no description
+R1(config-if)#exit
+R1(config)#exit
+R1#show interfaces status
+```
+
+![show interface status after no](./pictures/lab7_show-interface-status-after-no.jpg)
+
+### See results of default autonegotiation when connecting a device
+We create the following toplogy:
+
+![Connected to one device](./pictures/lab7_connect-one-device.jpg)
+
+This removes all the configuration we did before. However the important part is the result of the `show interface status` command as we can see what is shown when autonegotiation has taken place:
+
+![show interface status connect one deivce](./pictures/lab7_show-interface-status-connect-one-device.jpg)
+
+* **Status**: connected => Both layer 1 and 2 are functioning.
+* **Duplex**: a-full => duplex value of "full" was obtained via autonegotiation.
+* **Speed**: 1-100 => duplex  value of "100" was obtained via autonegotiation.
